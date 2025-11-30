@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Validation from "../SignupValidation";
-import axios from "axios";
+import { axiosInstance } from "../lib/axios";
 
 export default function Signup() {
   const [values, setValues] = useState({
@@ -27,8 +27,9 @@ export default function Signup() {
 
     // if no errors, proceed to submit
     if ( validationErrors.name === "" && validationErrors.email === "" && validationErrors.password === "") {
-      axios
-        .post("http://localhost:8081/signup", values)
+            axiosInstance
+
+        .post("/signup", values)
         .then((res) => {
           console.log("Signup successful:", res.data);
           navigate("/");

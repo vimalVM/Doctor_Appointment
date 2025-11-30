@@ -1,20 +1,26 @@
 require("dotenv").config();
+const path = require("path");
 const express = require("express");
 const mysql = require("mysql2");
 const cors = require("cors");// cross origin resource sharing
- //If your React frontend is running on a different port (like 3000), and your backend on 8081, 
+ //If your React frontend is running on a different port (like 3000), and your backend on 5000, 
  // browsers block the requests by default.
 // Using this middleware allows requests between different origins.
 const app = express();
 
-app.use(cors()); 
+app.use(
+  cors({
+    origin: ["http://localhost:3000"], 
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
 app.use(express.json());//This middleware parses incoming JSON data in the request body.
                           //express.json() automatically converts it into a usable JavaScript object (req.body).
                           /*req.body = {
                                           email: "user@gmail.com",
                                           password: "12345"
                                         }*/
-
 
 
 const db = mysql.createConnection({
@@ -40,7 +46,7 @@ db.connect((err) => {
   console.log("Connected to database.");
 });
 
-app.post("/signup", (req, res) => {
+app.post("/api/signup", (req, res) => {
   const sql = "INSERT INTO patient_master (Patient_Name, Patient_Email, Patient_Password) VALUES (?)";
   const values = [req.body.name, req.body.email, req.body.password];
 
@@ -53,21 +59,52 @@ app.post("/signup", (req, res) => {
   });
 });
 
-app.post("/login", (req, res) => {
-  const sql = "SELECT * FROM patient_master WHERE Patient_Email = ? AND Patient_Password = ?";
+app.post("/api/login", (req, res) => {
+  console.log(" Patient Login Request Received:", req.body);
+
+  const sql =
+    "SELECT * FROM patient_master WHERE Patient_Email = ? AND Patient_Password = ?";
   const values = [req.body.email, req.body.password];
 
   db.query(sql, values, (err, data) => {
     if (err) {
+      console.error(" SQL ERROR:", err);
+      return res.status(500).json({ message: "Database error", error: err });
+    }
+
+    if (data.length > 0) {
+      const patient = data[0];
+      console.log(" Patient Found:", patient);
+      return res.json({
+        message: "Login successful",
+        patientId: patient.Patient_Id,
+      });
+    } else {
+      console.log(" Invalid Credentials");
+      return res.status(401).json({ message: "Invalid email or password" });
+    }
+  });
+});
+
+// doctor login
+//  Doctor Login
+app.post("/api/doctorlogin", (req, res) => {
+  const { email, password } = req.body;
+
+  const sql = "SELECT * FROM doctor_master WHERE Email = ? AND Password = ?";
+
+  db.query(sql, [email, password], (err, data) => {
+    if (err) {
+      console.error("Doctor login error:", err);
       return res.status(500).json({ message: "Server error" });
     }
 
     if (data.length > 0) {
-      // User found, send patient ID
-      const patient = data[0]; // first matched row
-      return res.json({ 
-        message: "Login successful", 
-        patientId: patient.Patient_Id // make sure column name matches your DB
+      const doctor = data[0];
+      return res.json({
+        message: "Doctor login successful",
+        doctorId: doctor.DoctorID,
+        fullName: doctor.FullName
       });
     } else {
       return res.status(401).json({ message: "Invalid email or password" });
@@ -76,7 +113,8 @@ app.post("/login", (req, res) => {
 });
 
 
-app.get("/doctors", (req, res) => {
+
+app.get("/api/doctors", (req, res) => {
   const sql = "SELECT * FROM doctor_master WHERE Status = 'Available'";
 
   db.query(sql, (err, data) => {
@@ -89,7 +127,7 @@ app.get("/doctors", (req, res) => {
 });
 
 // 🔍 Search doctors by name
-app.get("/search-doctors", (req, res) => {
+app.get("/api/search-doctors", (req, res) => {
   const search = req.query.q;
 
   if (!search || search.trim() === "") {
@@ -109,57 +147,33 @@ app.get("/search-doctors", (req, res) => {
   });
 });
 
-
-app.post("/book-appointment", (req, res) => {
+app.post("/api/book-appointment", (req, res) => {
   const { doctorId, patientId, date, slot } = req.body;
 
   if (!doctorId || !patientId || !date || !slot) {
     return res.status(400).json({ message: "Missing required fields" });
   }
 
-  // Validate date
-  if (isNaN(new Date(date).getTime())) {
-    return res.status(400).json({ message: "Invalid date format" });
-  }
-
-  // Check if slot already booked
-  const checkQuery = `
-    SELECT * FROM appointments
-    WHERE DoctorID = ? AND AppointmentDate = ? AND SlotTime = ?
+  const insertQuery = `
+    INSERT INTO appointments (DoctorID, PatientID, AppointmentDate, SlotTime, Status)
+    VALUES (?, ?, ?, ?, 'Pending')
   `;
 
-  db.query(checkQuery, [doctorId, date, slot], (err, result) => {
+  db.query(insertQuery, [doctorId, patientId, date, slot], (err, result) => {
     if (err) {
-      console.error("Check query error:", err);
-      return res.status(500).json({ message: "Database error" });
+      console.error("Insert error:", err);
+      return res.status(500).json({ message: "Database insert failed" });
     }
 
-    if (result.length > 0) {
-      return res.status(409).json({ message: "Slot already booked" });
-    }
-
-    // Insert new appointment
-    const insertQuery = `
-      INSERT INTO appointments (DoctorID, PatientID, AppointmentDate, SlotTime, Status)
-      VALUES (?, ?, ?, ?, 'Booked')
-    `;
-
-    db.query(insertQuery, [doctorId, patientId, date, slot], (err2, result2) => {
-      if (err2) {
-        console.error("Insert error:", err2);
-        return res.status(500).json({ message: "Database insert failed" });
-      }
-
-      res.status(200).json({
-        message: "Appointment booked successfully!",
-        appointmentId: result2.insertId
-      });
+    res.status(200).json({
+      message: "Appointment request sent to doctor!",
+      appointmentId: result.insertId
     });
   });
 });
 
-// 🆕 Get all upcoming appointments for a patient
-app.get("/appointments/:patientId", (req, res) => {
+//  Get all upcoming appointments for a patient
+app.get("/api/appointments/:patientId", (req, res) => {
   const { patientId } = req.params;
 
   const sql = `
@@ -181,7 +195,7 @@ app.get("/appointments/:patientId", (req, res) => {
   });
 });
 
-app.delete("/appointments/:appointmentId", (req, res) => {
+app.delete("/api/appointments/:appointmentId", (req, res) => {
   const { appointmentId } = req.params;
 
   const sql = "DELETE FROM appointments WHERE AppointmentID = ?";
@@ -199,32 +213,72 @@ app.delete("/appointments/:appointmentId", (req, res) => {
   });
 });
 
+app.get("/api/doctor/requests/:doctorId", (req, res) => {
+  const { doctorId } = req.params;
 
+  const sql = `
+    SELECT 
+      a.AppointmentID, 
+      a.AppointmentDate, 
+      a.SlotTime, 
+      a.Status,
+      p.Patient_Name, 
+      p.Patient_Email
+    FROM appointments a
+    JOIN patient_master p ON a.PatientID = p.Patient_Id
+    WHERE a.DoctorID = ? AND a.Status = 'Pending'
+  `;
 
-app.listen(8081, () => {
-  console.log("Server listening on port 8081");
+  db.query(sql, [doctorId], (err, results) => {
+    if (err) {
+      console.error("Error fetching doctor requests:", err);
+      return res.status(500).json({ message: "Database error" });
+    }
+    res.json(results);
+  });
+});
+
+app.post("/api/doctor/accept", (req, res) => {
+  const { appointmentId } = req.body;
+
+  const sql = "UPDATE appointments SET Status = 'Confirmed' WHERE AppointmentID = ?";
+
+  db.query(sql, [appointmentId], (err) => {
+    if (err) {
+      console.error("Error updating appointment:", err);
+      return res.status(500).json({ message: "Database error" });
+    }
+    res.json({ message: "Appointment Accepted" });
+  });
+});
+
+app.post("/api/doctor/reject", (req, res) => {
+  const { appointmentId } = req.body;
+
+  const sql = "UPDATE appointments SET Status = 'Rejected' WHERE AppointmentID = ?";
+
+  db.query(sql, [appointmentId], (err) => {
+    if (err) {
+      console.error("Error updating appointment:", err);
+      return res.status(500).json({ message: "Database error" });
+    }
+    res.json({ message: "Appointment Rejected" });
+  });
+});
+
+const frontendPath = path.join(__dirname, "../frontend/build");
+app.use(express.static(frontendPath));
+
+app.get(/.*/, (req, res) => {
+  res.sendFile(path.join(frontendPath, "index.html"));
+});
+
+app.use((err, req, res, next) => {
+  res.status(500).json({ message: process.env.NODE_ENV === "production" ? "Internal server error" : err.message });
+});
+
+app.listen(5000, () => {
+  console.log("Server listening on port 5000");
 });
 
 
-
-// const express = require("express");
-// const cors = require("cors");
-
-// const app = express();
-// app.use(cors());
-// app.use(express.json());
-
-// // Import route files
-// const authRoutes = require("./routes/authRoutes");
-// const doctorRoutes = require("./routes/doctorRoutes");
-// const appointmentRoutes = require("./routes/appointmentRoutes");
-
-// // Use them
-// app.use("/auth", authRoutes);
-// app.use("/doctors", doctorRoutes);
-// app.use("/appointments", appointmentRoutes);
-
-// // Start server
-// app.listen(8081, () => {
-//   console.log("🚀 Server listening on port 8081");
-// });

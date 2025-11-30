@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import { axiosInstance } from "../lib/axios";
 
 export default function UpcomingAppointments({ patientId }) {
   const [appointments, setAppointments] = useState([]);
@@ -7,14 +7,13 @@ export default function UpcomingAppointments({ patientId }) {
 
   useEffect(() => {
     if (!patientId) return;
-
     fetchAppointments();
   }, [patientId]);
 
   const fetchAppointments = () => {
     setLoading(true);
-    axios
-      .get(`http://localhost:8081/appointments/${patientId}`)
+  
+    axiosInstance.get(`/appointments/${patientId}`)
       .then((res) => {
         setAppointments(res.data);
         setLoading(false);
@@ -25,7 +24,6 @@ export default function UpcomingAppointments({ patientId }) {
       });
   };
 
-  // 🗑️ Cancel appointment handler
   const handleCancel = (appointmentId) => {
     const confirmCancel = window.confirm(
       "Are you sure you want to cancel this appointment?"
@@ -33,11 +31,10 @@ export default function UpcomingAppointments({ patientId }) {
 
     if (!confirmCancel) return;
 
-    axios
-      .delete(`http://localhost:8081/appointments/${appointmentId}`)
+    axiosInstance
+      .delete(`/appointments/${appointmentId}`)
       .then(() => {
         alert("Appointment cancelled successfully.");
-        // Remove it from state without refetching
         setAppointments((prev) =>
           prev.filter((appt) => appt.AppointmentID !== appointmentId)
         );
@@ -52,47 +49,49 @@ export default function UpcomingAppointments({ patientId }) {
 
   return (
     <div className="container mt-3">
-      <h3 className="mb-4">🩺 Upcoming Appointments</h3>
+      <h3 className="mb-4">🩺 Your Appointments</h3>
 
       {appointments.length === 0 ? (
-        <p className="text-muted">No upcoming appointments found.</p>
+        <p className="text-muted">No appointments found.</p>
       ) : (
         <div className="row">
           {appointments.map((appt) => (
             <div key={appt.AppointmentID} className="col-md-4 mb-3">
               <div className="card shadow-sm p-3 rounded position-relative">
-                {/* ❌ Cancel button (top-right corner) */}
-                <button
-                  className="btn btn-sm btn-danger position-absolute top-0 end-0 m-2"
-                  onClick={() => handleCancel(appt.AppointmentID)}
-                  title="Cancel appointment"
-                >
-                  ✖
-                </button>
+
+                {/*  Hide cancel for Rejected */}
+                {appt.Status !== "Rejected" && (
+                  <button
+                    className="btn btn-sm btn-danger position-absolute top-0 end-0 m-2"
+                    onClick={() => handleCancel(appt.AppointmentID)}
+                    title="Cancel appointment"
+                  >
+                    ✖
+                  </button>
+                )}
 
                 <h5 className="card-title mt-3">{appt.DoctorName}</h5>
-                <p className="card-text mb-1">
-                  <strong>Specialization:</strong> {appt.Specialization}
-                </p>
-                <p className="card-text mb-1">
-                  <strong>Date:</strong>{" "}
-                  {new Date(appt.AppointmentDate).toLocaleDateString()}
-                </p>
-                <p className="card-text mb-1">
-                  <strong>Slot:</strong> {appt.SlotTime}
-                </p>
-                <p className="card-text">
+                <p><strong>Specialization:</strong> {appt.Specialization}</p>
+                <p><strong>Date:</strong> {new Date(appt.AppointmentDate).toLocaleDateString()}</p>
+                <p><strong>Slot:</strong> {appt.SlotTime}</p>
+
+                <p>
                   <strong>Status:</strong>{" "}
                   <span
                     className={`badge ${
-                      appt.Status === "Cancelled"
+                      appt.Status === "Pending"
+                        ? "bg-warning text-dark"
+                        : appt.Status === "Confirmed"
+                        ? "bg-success"
+                        : appt.Status === "Rejected"
                         ? "bg-danger"
-                        : "bg-success"
+                        : "bg-secondary"
                     }`}
                   >
                     {appt.Status}
                   </span>
                 </p>
+
               </div>
             </div>
           ))}

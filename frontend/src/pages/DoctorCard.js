@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import { axiosInstance } from "../lib/axios";
 
 function DoctorList({ patientId }) {
   const [doctors, setDoctors] = useState([]);
@@ -18,8 +19,8 @@ function DoctorList({ patientId }) {
 
   useEffect(() => {
     // Fetch available doctors
-    axios
-      .get("http://localhost:8081/doctors")
+    axiosInstance
+      .get("/doctors")
       .then((res) => setDoctors(res.data))
       .catch((err) => console.error("Error fetching doctors:", err));
   }, []);
@@ -60,8 +61,8 @@ function DoctorList({ patientId }) {
         return;
       }
 
-      axios
-        .post("http://localhost:8081/book-appointment", {
+      axiosInstance
+        .post("/book-appointment", {
           doctorId: doctorId,
           patientId: patientId, // ✅ comes from props
           date: date,
@@ -88,17 +89,8 @@ function DoctorList({ patientId }) {
     <div className="container mt-4">
       <div className="row justify-content-center">
         {doctors.map((doctor) => (
-          <div
-            key={doctor.DoctorID}
-            id={`doctor-card-${doctor.DoctorID}`}
-            className="col-6 col-sm-4 col-md-3 col-lg-3 mb-4 d-flex justify-content-center"
-          >
-            <div
-              className="card text-center shadow-sm border-0"
-              style={{
-                width: "15rem",
-                transition: "transform 0.2s ease-in-out, box-shadow 0.2s",
-              }}
+          <div key={doctor.DoctorID} id={`doctor-card-${doctor.DoctorID}`} className="col-6 col-sm-4 col-md-3 col-lg-3 mb-4 d-flex justify-content-center">
+            <div className="card text-center shadow-sm border-0" style={{ width: "15rem", transition: "transform 0.2s ease-in-out, box-shadow 0.2s",}}
               onMouseEnter={(e) => {
                 e.currentTarget.style.transform = "scale(1.05)";
                 e.currentTarget.style.boxShadow = "0 6px 20px rgba(0,0,0,0.15)";
