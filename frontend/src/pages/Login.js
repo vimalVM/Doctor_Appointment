@@ -38,6 +38,7 @@ export default function Login() {
         navigate("/patientdashboard");
       } else {
         localStorage.setItem("doctorId", res.data.doctorId);
+        localStorage.setItem("doctorName", res.data.doctorName);
         navigate("/doctordashboard");
       }
     } catch (err) {

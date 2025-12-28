@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { axiosInstance } from "../lib/axios";
 
-export default function DoctorRequests() {
+export default function DoctorRequests({ onRequestHandled }) {
+
   const [doctorId, setDoctorId] = useState(null);
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -33,20 +34,22 @@ export default function DoctorRequests() {
 
   // Accept appointment
   const handleAccept = (appointmentId) => {
-          axiosInstance
+      axiosInstance
+        .post("/doctor/accept", { appointmentId })
+        .then(() => {
+          alert("Appointment Accepted!");
+          setRequests(requests.filter((r) => r.AppointmentID !== appointmentId));
 
-      .post("/doctor/accept", { appointmentId })
-      .then(() => {
-        alert("Appointment Accepted!");
-        setRequests(requests.filter((r) => r.AppointmentID !== appointmentId));
-      })
-      .catch((err) => console.error(err));
+          // ✅ Notify dashboard to go to Home
+          onRequestHandled();
+        })
+        .catch((err) => console.error(err));
   };
+
 
   // Reject appointment
   const handleReject = (appointmentId) => {
-          axiosInstance
-
+    axiosInstance
       .post("/doctor/reject", { appointmentId })
       .then(() => {
         alert("Appointment Rejected!");
@@ -54,6 +57,7 @@ export default function DoctorRequests() {
       })
       .catch((err) => console.error(err));
   };
+
 
   if (loading) return <h3 className="mt-4 text-center">Loading requests...</h3>;
 

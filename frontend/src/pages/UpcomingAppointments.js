@@ -3,6 +3,8 @@ import { axiosInstance } from "../lib/axios";
 
 export default function UpcomingAppointments({ patientId }) {
   const [appointments, setAppointments] = useState([]);
+  const [filteredAppointments, setFilteredAppointments] = useState([]);
+  const [statusFilter, setStatusFilter] = useState("Pending");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -10,12 +12,17 @@ export default function UpcomingAppointments({ patientId }) {
     fetchAppointments();
   }, [patientId]);
 
+  useEffect(() => {
+    filterAppointments();
+  }, [statusFilter, appointments]);
+
   const fetchAppointments = () => {
     setLoading(true);
-  
-    axiosInstance.get(`/appointments/${patientId}`)
+
+    axiosInstance
+      .get(`/appointments/${patientId}`)
       .then((res) => {
-        setAppointments(res.data);
+        setAppointments(res.data || []);
         setLoading(false);
       })
       .catch((err) => {
@@ -24,12 +31,15 @@ export default function UpcomingAppointments({ patientId }) {
       });
   };
 
-  const handleCancel = (appointmentId) => {
-    const confirmCancel = window.confirm(
-      "Are you sure you want to cancel this appointment?"
+  const filterAppointments = () => {
+    setFilteredAppointments(
+      appointments.filter((a) => a.Status === statusFilter)
     );
+  };
 
-    if (!confirmCancel) return;
+  const handleCancel = (appointmentId) => {
+    if (!window.confirm("Are you sure you want to cancel this appointment?"))
+      return;
 
     axiosInstance
       .delete(`/appointments/${appointmentId}`)
@@ -39,58 +49,68 @@ export default function UpcomingAppointments({ patientId }) {
           prev.filter((appt) => appt.AppointmentID !== appointmentId)
         );
       })
-      .catch((err) => {
-        console.error("Error cancelling appointment:", err);
-        alert("Failed to cancel appointment. Please try again.");
-      });
+      .catch(() => alert("Failed to cancel appointment."));
   };
 
   if (loading) return <p>Loading appointments...</p>;
 
   return (
     <div className="container mt-3">
-      <h3 className="mb-4">🩺 Your Appointments</h3>
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <h3>🩺 Your Appointments</h3>
 
-      {appointments.length === 0 ? (
-        <p className="text-muted">No appointments found.</p>
+        {/* STATUS DROPDOWN */}
+        <select
+          className="form-select w-auto"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+        >
+          <option value="Pending">Pending</option>
+          <option value="Confirmed">Booked</option>
+          <option value="Completed">Completed</option>
+        </select>
+      </div>
+
+      {filteredAppointments.length === 0 ? (
+        <p className="text-muted">
+          No {statusFilter.toLowerCase()} appointments.
+        </p>
       ) : (
         <div className="row">
-          {appointments.map((appt) => (
+          {filteredAppointments.map((appt) => (
             <div key={appt.AppointmentID} className="col-md-4 mb-3">
               <div className="card shadow-sm p-3 rounded position-relative">
 
-                {/*  Hide cancel for Rejected */}
-                {appt.Status !== "Rejected" && (
+                {/* CANCEL BUTTON */}
+                {(appt.Status === "Pending" || appt.Status === "Confirmed") && (
                   <button
                     className="btn btn-sm btn-danger position-absolute top-0 end-0 m-2"
                     onClick={() => handleCancel(appt.AppointmentID)}
-                    title="Cancel appointment"
                   >
                     ✖
                   </button>
                 )}
 
-                <h5 className="card-title mt-3">{appt.DoctorName}</h5>
+                <h5 className="mt-3">{appt.DoctorName}</h5>
+
                 <p><strong>Specialization:</strong> {appt.Specialization}</p>
-                <p><strong>Date:</strong> {new Date(appt.AppointmentDate).toLocaleDateString()}</p>
+                <p>
+                  <strong>Date:</strong>{" "}
+                  {new Date(appt.AppointmentDate).toLocaleDateString()}
+                </p>
                 <p><strong>Slot:</strong> {appt.SlotTime}</p>
 
-                <p>
-                  <strong>Status:</strong>{" "}
-                  <span
-                    className={`badge ${
-                      appt.Status === "Pending"
-                        ? "bg-warning text-dark"
-                        : appt.Status === "Confirmed"
-                        ? "bg-success"
-                        : appt.Status === "Rejected"
-                        ? "bg-danger"
-                        : "bg-secondary"
-                    }`}
-                  >
-                    {appt.Status}
-                  </span>
-                </p>
+                <span
+                  className={`badge ${
+                    appt.Status === "Pending"
+                      ? "bg-warning text-dark"
+                      : appt.Status === "Confirmed"
+                      ? "bg-primary"
+                      : "bg-success"
+                  }`}
+                >
+                  {appt.Status}
+                </span>
 
               </div>
             </div>

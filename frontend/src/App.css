@@ -28,6 +28,31 @@
   color: #61dafb;
 }
 
+.feature-card {
+  background: linear-gradient(135deg, #0d6efd, #0a58ca);
+  color: #fff;
+  padding: 30px 25px;
+  border-radius: 14px;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.feature-card p {
+  color: #e9f1ff;
+  font-size: 0.95rem;
+}
+
+.feature-card:hover {
+  transform: translateY(-10px) scale(1.03);
+  box-shadow: 0 20px 40px rgba(13, 110, 253, 0.4);
+}
+
+.feature-card i {
+  color: #ffffff;
+}
+
+
+
 @keyframes App-logo-spin {
   from {
     transform: rotate(0deg);

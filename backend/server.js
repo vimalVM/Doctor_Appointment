@@ -23,20 +23,20 @@ app.use(express.json());//This middleware parses incoming JSON data in the reque
                                         }*/
 
 
-const db = mysql.createConnection({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASS,
-  database: process.env.DB_NAME,
-  port: process.env.DB_PORT,
-});
-
 // const db = mysql.createConnection({
-//   host: "localhost",
-//   user: "root",
-//   password: "#Vimal2004",
-//   database: "doctor_appointment"
+//   host: process.env.DB_HOST,
+//   user: process.env.DB_USER,
+//   password: process.env.DB_PASS,
+//   database: process.env.DB_NAME,
+//   port: process.env.DB_PORT,
 // });
+
+const db = mysql.createConnection({
+  host: "localhost",
+  user: "root",
+  password: "#Vimal2004",
+  database: "doctor_appointment"
+});
 
 db.connect((err) => {
   if (err) {
@@ -91,26 +91,32 @@ app.post("/api/login", (req, res) => {
 app.post("/api/doctorlogin", (req, res) => {
   const { email, password } = req.body;
 
-  const sql = "SELECT * FROM doctor_master WHERE Email = ? AND Password = ?";
+  const sql = `
+    SELECT DoctorID, FullName, Email 
+    FROM doctor_master 
+    WHERE Email = ? AND Password = ?
+  `;
 
-  db.query(sql, [email, password], (err, data) => {
+  db.query(sql, [email, password], (err, result) => {
     if (err) {
       console.error("Doctor login error:", err);
       return res.status(500).json({ message: "Server error" });
     }
 
-    if (data.length > 0) {
-      const doctor = data[0];
-      return res.json({
-        message: "Doctor login successful",
-        doctorId: doctor.DoctorID,
-        fullName: doctor.FullName
-      });
-    } else {
-      return res.status(401).json({ message: "Invalid email or password" });
+    if (result.length === 0) {
+      return res.status(401).json({ message: "Invalid credentials" });
     }
+
+    const doctor = result[0];
+
+    // ✅ SEND BOTH ID AND NAME
+    res.json({
+      doctorId: doctor.DoctorID,
+      doctorName: doctor.FullName
+    });
   });
 });
+
 
 
 
@@ -147,6 +153,7 @@ app.get("/api/search-doctors", (req, res) => {
   });
 });
 
+// ================== BOOK APPOINTMENT (PATIENT) ==================
 app.post("/api/book-appointment", (req, res) => {
   const { doctorId, patientId, date, slot } = req.body;
 
@@ -154,23 +161,54 @@ app.post("/api/book-appointment", (req, res) => {
     return res.status(400).json({ message: "Missing required fields" });
   }
 
-  const insertQuery = `
-    INSERT INTO appointments (DoctorID, PatientID, AppointmentDate, SlotTime, Status)
-    VALUES (?, ?, ?, ?, 'Pending')
+  // 1️⃣ Check if slot already booked or confirmed
+  const checkQuery = `
+    SELECT AppointmentID
+    FROM appointments
+    WHERE DoctorID = ?
+      AND AppointmentDate = ?
+      AND SlotTime = ?
+      AND Status IN ('Pending', 'Booked', 'Confirmed')
   `;
 
-  db.query(insertQuery, [doctorId, patientId, date, slot], (err, result) => {
+  db.query(checkQuery, [doctorId, date, slot], (err, rows) => {
     if (err) {
-      console.error("Insert error:", err);
-      return res.status(500).json({ message: "Database insert failed" });
+      console.error("Slot check error:", err);
+      return res.status(500).json({ message: "Database error" });
     }
 
-    res.status(200).json({
-      message: "Appointment request sent to doctor!",
-      appointmentId: result.insertId
-    });
+    // 🚫 Slot already taken
+    if (rows.length > 0) {
+      return res.status(409).json({
+        message: "This time slot is already booked. Please select another slot."
+      });
+    }
+
+    // 2️⃣ Slot is free → insert appointment
+    const insertQuery = `
+      INSERT INTO appointments
+      (DoctorID, PatientID, AppointmentDate, SlotTime, Status)
+      VALUES (?, ?, ?, ?, 'Pending')
+    `;
+
+    db.query(
+      insertQuery,
+      [doctorId, patientId, date, slot],
+      (err, result) => {
+        if (err) {
+          console.error("Insert error:", err);
+          return res.status(500).json({ message: "Database insert failed" });
+        }
+
+        res.status(200).json({
+          message: "Appointment request sent to doctor!",
+          appointmentId: result.insertId
+        });
+      }
+    );
   });
 });
+
 
 //  Get all upcoming appointments for a patient
 app.get("/api/appointments/:patientId", (req, res) => {
@@ -213,6 +251,9 @@ app.delete("/api/appointments/:appointmentId", (req, res) => {
   });
 });
 
+
+
+// ================== DOCTOR: VIEW REQUESTS ==================
 app.get("/api/doctor/requests/:doctorId", (req, res) => {
   const { doctorId } = req.params;
 
@@ -238,6 +279,7 @@ app.get("/api/doctor/requests/:doctorId", (req, res) => {
   });
 });
 
+// ================== DOCTOR ACCEPT ==================
 app.post("/api/doctor/accept", (req, res) => {
   const { appointmentId } = req.body;
 
@@ -252,6 +294,7 @@ app.post("/api/doctor/accept", (req, res) => {
   });
 });
 
+// ================== DOCTOR REJECT ==================
 app.post("/api/doctor/reject", (req, res) => {
   const { appointmentId } = req.body;
 
@@ -265,6 +308,60 @@ app.post("/api/doctor/reject", (req, res) => {
     res.json({ message: "Appointment Rejected" });
   });
 });
+
+
+// Doctor confirmed / booked appointments
+app.get("/api/doctor/appointments/:doctorId", (req, res) => {
+  const { doctorId } = req.params;
+
+  const sql = `
+    SELECT a.AppointmentID, a.AppointmentDate, a.SlotTime, a.Status,
+           p.Patient_Name, p.Patient_Email
+    FROM appointments a
+    JOIN patient_master p ON a.PatientID = p.Patient_Id
+    WHERE a.DoctorID = ? AND a.Status = 'Confirmed'
+    ORDER BY a.AppointmentDate
+  `;
+
+  db.query(sql, [doctorId], (err, data) => {
+    if (err) return res.status(500).json(err);
+    res.json(data);
+  });
+});
+
+
+// ================== DOCTOR MARK COMPLETED ==================
+app.post("/api/doctor/complete", (req, res) => {
+  const { appointmentId } = req.body;
+
+  const sql =
+    "UPDATE appointments SET Status = 'Completed' WHERE AppointmentID = ?";
+
+  db.query(sql, [appointmentId], (err) => {
+    if (err) return res.status(500).json(err);
+    res.json({ message: "Appointment marked as completed" });
+  });
+});
+
+// ================== DOCTOR COMPLETED HISTORY ==================
+app.get("/api/doctor/appointments/completed/:doctorId", (req, res) => {
+  const { doctorId } = req.params;
+
+  const sql = `
+    SELECT a.AppointmentID, a.AppointmentDate, a.SlotTime,
+           p.Patient_Name, p.Patient_Email
+    FROM appointments a
+    JOIN patient_master p ON a.PatientID = p.Patient_Id
+    WHERE a.DoctorID = ? AND a.Status = 'Completed'
+    ORDER BY a.AppointmentDate DESC
+  `;
+
+  db.query(sql, [doctorId], (err, data) => {
+    if (err) return res.status(500).json([]);
+    res.json(data); // ALWAYS ARRAY
+  });
+});
+
 
 const frontendPath = path.join(__dirname, "../frontend/build");
 app.use(express.static(frontendPath));

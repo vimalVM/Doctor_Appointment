@@ -4,6 +4,8 @@ import { useNavigate } from "react-router-dom";
 import { axiosInstance } from "../lib/axios";
 import DoctorList from "./DoctorCard";
 import UpcomingAppointments from "./UpcomingAppointments"; 
+import PatientHome from "./PatientHome";
+
 
 export default function PatientDashboard() {
   const navigate = useNavigate();
@@ -24,8 +26,10 @@ export default function PatientDashboard() {
   // Change view and close sidebar
   const handleViewChange = (view) => {
     setCurrentView(view);
+    window.scrollTo({ top: 0, behavior: "smooth" });
     closeOffcanvas();
   };
+
 
   const goToLogin = () => {
     const confirmLogout = window.confirm("Are you sure you want to Logout?");
@@ -155,23 +159,25 @@ export default function PatientDashboard() {
       </nav>
 
       {/* Main Content */}
-      <div className="container mt-5 pt-5">
-        {currentView === "home" && (
-          <div>
-            <h2>Welcome to ClinicHub!</h2>
-            <p>
-              This is your home page content. You can add dashboard stats,
-              latest updates, or welcome message here.
-            </p>
-          </div>
-        )}
+      
+          {currentView === "home" && (
+            <PatientHome onNavigate={handleViewChange} />
+          )}
 
-        {currentView === "book" && <DoctorList patientId={loggedInPatientId} />}
 
-        {currentView === "upcoming" && (
-          <UpcomingAppointments patientId={loggedInPatientId} />
-        )}
-      </div>
+          {currentView === "book" && (
+            <div className="container mt-5 pt-5">
+              <DoctorList patientId={loggedInPatientId} />
+            </div>
+          )}
+
+          {currentView === "upcoming" && (
+            <div className="container mt-5 pt-5">
+              <UpcomingAppointments patientId={loggedInPatientId} />
+            </div>
+          )}
+
+      
     </>
   );
 }
