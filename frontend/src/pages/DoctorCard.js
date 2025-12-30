@@ -64,7 +64,7 @@ function DoctorList({ patientId }) {
       axiosInstance
         .post("/book-appointment", {
           doctorId: doctorId,
-          patientId: patientId, // ✅ comes from props
+          patientId: patientId, //  comes from props
           date: date,
           slot: slot,
         })
@@ -101,10 +101,7 @@ function DoctorList({ patientId }) {
               }}
             >
               <div className="text-center mt-3">
-                <img
-                  src={doctor.ProfileImage}
-                  alt={doctor.FullName}
-                  className="rounded-circle"
+                <img src={doctor.ProfileImage} alt={doctor.FullName} className="rounded-circle"
                   style={{
                     width: "90px",
                     height: "90px",
@@ -116,22 +113,13 @@ function DoctorList({ patientId }) {
 
               <div className="card-body p-3">
                 <h6 className="card-title mb-1 fw-bold">{doctor.FullName}</h6>
-                <p
-                  className="card-text text-muted mb-1"
-                  style={{ fontSize: "0.85rem" }}
-                >
+                <p className="card-text text-muted mb-1" style={{ fontSize: "0.85rem" }}>
                   {doctor.Specialization}
                 </p>
-                <p
-                  className="text-secondary mb-1"
-                  style={{ fontSize: "0.8rem" }}
-                >
+                <p className="text-secondary mb-1" style={{ fontSize: "0.8rem" }}>
                   {doctor.HospitalName}
                 </p>
-                <p
-                  className="text-success fw-bold mb-2"
-                  style={{ fontSize: "0.9rem" }}
-                >
+                <p className="text-success fw-bold mb-2" style={{ fontSize: "0.9rem" }}>
                   ₹{doctor.Fees}
                 </p>
 

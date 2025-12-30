@@ -161,7 +161,7 @@ app.post("/api/book-appointment", (req, res) => {
     return res.status(400).json({ message: "Missing required fields" });
   }
 
-  // 1️⃣ Check if slot already booked or confirmed
+  // 1 Check if slot already booked or confirmed
   const checkQuery = `
     SELECT AppointmentID
     FROM appointments
@@ -177,14 +177,14 @@ app.post("/api/book-appointment", (req, res) => {
       return res.status(500).json({ message: "Database error" });
     }
 
-    // 🚫 Slot already taken
+    //  Slot already taken
     if (rows.length > 0) {
       return res.status(409).json({
         message: "This time slot is already booked. Please select another slot."
       });
     }
 
-    // 2️⃣ Slot is free → insert appointment
+    //  Slot is free → insert appointment
     const insertQuery = `
       INSERT INTO appointments
       (DoctorID, PatientID, AppointmentDate, SlotTime, Status)
@@ -233,6 +233,7 @@ app.get("/api/appointments/:patientId", (req, res) => {
   });
 });
 
+// delete appointmnets
 app.delete("/api/appointments/:appointmentId", (req, res) => {
   const { appointmentId } = req.params;
 

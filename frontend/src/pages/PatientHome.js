@@ -177,9 +177,9 @@ export default function PatientHome({ onNavigate }) {
             {/* Brand */}
             <div className="col-md-4 mb-4">
                 <h5 className="fw-bold">ClinicHub</h5>
-                <p className="text-muted small mt-2">
-                A smart doctor appointment booking system to manage healthcare
-                efficiently and securely.
+                <p className="text-light small mt-2">
+                A smart doctor appointment booking system to manage 
+                healthcare efficiently and securely.
                 </p>
             </div>
 
@@ -228,7 +228,7 @@ export default function PatientHome({ onNavigate }) {
 
             <hr className="border-secondary" />
 
-            <div className="text-center pb-3 small text-muted">
+            <div className="text-center pb-3 small text-white">
             © {new Date().getFullYear()} ClinicHub. All rights reserved.
             </div>
         </div>

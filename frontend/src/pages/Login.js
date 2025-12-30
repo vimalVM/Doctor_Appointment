@@ -19,7 +19,7 @@ export default function Login() {
   const handleSubmit = async (event) => {
     event.preventDefault();
 
-    console.log("⭕ SELECTED LOGIN TYPE:", userType);
+    console.log(" SELECTED LOGIN TYPE:", userType);
 
     const validationErrors = Validation(values);
     setErrors(validationErrors);
@@ -78,25 +78,13 @@ export default function Login() {
         <form onSubmit={handleSubmit}>
           <div className="mb-3">
             <label><strong>Email</strong></label>
-            <input
-              type="email"
-              name="email"
-              className="form-control"
-              placeholder="Enter email"
-              onChange={handleInput}
-            />
+            <input type="email" name="email" className="form-control" placeholder="Enter email" onChange={handleInput}/>
             {errors.email && <small className="text-danger">{errors.email}</small>}
           </div>
 
           <div className="mb-3">
             <label><strong>Password</strong></label>
-            <input
-              type="password"
-              name="password"
-              className="form-control"
-              placeholder="Enter password"
-              onChange={handleInput}
-            />
+            <input type="password" name="password" className="form-control" placeholder="Enter password" onChange={handleInput}/>
             {errors.password && <small className="text-danger">{errors.password}</small>}
           </div>
 
