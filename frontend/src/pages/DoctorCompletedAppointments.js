@@ -12,7 +12,7 @@ export default function DoctorCompletedAppointments({ doctorId }) {
     // eslint-disable-next-line
   }, [doctorId]);
 
-  const fetchCompleted = async () => {
+  async function fetchCompleted() {
     setLoading(true);
     try {
       const res = await axiosInstance.get(
@@ -23,8 +23,8 @@ export default function DoctorCompletedAppointments({ doctorId }) {
       const data = Array.isArray(res.data)
         ? res.data
         : Array.isArray(res.data?.data)
-        ? res.data.data
-        : [];
+          ? res.data.data
+          : [];
 
       setAppointments(data);
     } catch (err) {
@@ -33,7 +33,7 @@ export default function DoctorCompletedAppointments({ doctorId }) {
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   if (loading) {
     return <p>Loading completed appointments...</p>;
